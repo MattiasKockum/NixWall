@@ -1,0 +1,57 @@
+repos:
+  - repo: local
+    hooks:
+      # --- Nix formatting / linting ---
+      - id: alejandra
+        name: alejandra
+        language: system
+        entry: alejandra
+        types: [nix]
+
+      - id: statix
+        name: statix
+        language: system
+        entry: statix
+        args: ["check"]
+        pass_filenames: false
+        types: [nix]
+
+      - id: deadnix
+        name: deadnix
+        language: system
+        entry: deadnix
+        args: ["--fail"]
+        pass_filenames: false
+        types: [nix]
+
+      # --- Shell lint / format ---
+      - id: shellcheck
+        name: shellcheck
+        language: system
+        entry: shellcheck
+        args: ["-e", "SC1091"]
+        files: '(installer/scripts/.*\.sh$|\.sh$|nixwall-install$)'
+
+
+      - id: shfmt
+        name: shfmt
+        language: system
+        entry: shfmt
+        args: ["-w"]
+        files: '(installer/scripts/.*\.sh$|\.sh$|nixwall-install$)'
+
+      # --- Markdown lint ---
+      - id: markdownlint
+        name: markdownlint
+        language: system
+        entry: markdownlint
+        files: '\.(md|markdown)$'
+
+      # --- JSON formatter ---
+      - id: prettier
+        name: prettier-json
+        language: system
+        entry: prettier
+        args: ["--write"]
+        files: '\.json$'
+

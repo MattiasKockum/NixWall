@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "usersDefaults": { "initialPassword": "changeme" },
+  "locale": {
+    "timeZone": "Europe/Paris",
+    "consoleKeyMap": "en",
+    "consoleFont": "Lat2-Terminus16"
+  },
+  "users": {
+    "alice": { "wheel": true },
+    "bob": { "groups": ["developers"] }
+  },
+  "interfaces": {
+    "LAN": "eth0",
+    "WAN": "eth1"
+  },
+  "network": {
+    "hostname": "nixwall",
+    "addresses": {
+      "LAN": "10.10.10.1/24",
+      "WAN": "10.100.100.1/24"
+    },
+    "gateway": "10.100.100.254",
+    "dns": ["10.100.100.10"]
+  },
+  "dhcp": {
+    "subnets": {
+      "LAN": {
+        "cidr": "10.10.10.0/24",
+        "range": "10.10.10.50-10.10.10.150",
+        "leaseSeconds": 86400
+      }
+    }
+  },
+  "firewall": {
+    "policies": { "input": "drop", "forward": "drop", "output": "accept" },
+    "rules": [
+      {
+        "name": "ssh-from-lan",
+        "action": "accept",
+        "from": "LAN",
+        "to": "FW",
+        "proto": "tcp",
+        "ports": 22
+      },
+      {
+        "name": "dashboard",
+        "action": "accept",
+        "from": "LAN",
+        "to": "FW",
+        "proto": "tcp",
+        "ports": 80
+      },
+      {
+        "name": "api",
+        "action": "accept",
+        "from": "LAN",
+        "to": "FW",
+        "proto": "tcp",
+        "ports": 8080
+      },
+      {
+        "name": "lan-to-wan",
+        "action": "accept",
+        "from": "LAN",
+        "to": "WAN",
+        "proto": "any"
+      }
+    ]
+  },
+  "nat": {
+    "masquerade": ["LAN"]
+  },
+  "services": {
+    "api": {
+      "enable": true,
+      "listenZones": ["LAN"],
+      "port": 8080
+    },
+    "ssh": {
+      "enable": true,
+      "listenZones": ["LAN"],
+      "passwordAuth": false,
+      "permitRootLogin": "prohibit-password",
+      "root": {
+        "authorizedKeys": [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDWmjs0Zo1u+9NjrJBSi0Dsds3lTrrOsm0DfkS1b+pdz root@test"
+        ]
+      },
+      "users": {
+        "alice": {
+          "sshAuthorizedKeys": [
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPzZm9OdiwdnERpkPbcL2cLo8BX0OL+JMdTHTeyfLV/G alice@test",
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDhe+Vg4zqW9WpBTDGyLcIrIcPbxO/ytM53A33QkdtWf alice@test"
+          ],
+          "passwordlessSudo": true
+        },
+        "bob": {
+          "sshAuthorizedKeys": [
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBtzGrILUf6GhgSWrO9dCICmqprYRWXAbnpmiYFPvWVW bob@test"
+          ]
+        }
+      }
+    },
+    "dashboard": {
+      "enable": true,
+      "port": 80,
+      "listenZones": ["LAN"]
+    },
+    "dns": {
+      "enable": true,
+      "port": 53,
+      "dict": { "machine.lan": "10.10.10.2", "website.lan": "10.100.100.100" },
+      "listenZones": ["LAN"],
+      "cacheSize": 2000
+    }
+  }
+}

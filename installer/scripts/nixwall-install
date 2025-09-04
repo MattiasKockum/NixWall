@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SELF_DIR="__NIXWALL_SELF_DIR__"
+if [[ "$SELF_DIR" == "__NIXWALL_SELF_DIR__" ]]; then
+	SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib/nixwall-installer" && pwd)"
+fi
+
+. "$SELF_DIR/lib/common.sh"
+. "$SELF_DIR/functions/confirm.sh"
+. "$SELF_DIR/functions/run_disko.sh"
+. "$SELF_DIR/functions/offline_install.sh"
+
+main() {
+	set_defaults
+	parse_args "$@"
+	require_root "$@"
+
+	header "Planning…"
+	confirm_or_exit
+	run_disko
+	do_offline_install
+}
+
+main "$@"
