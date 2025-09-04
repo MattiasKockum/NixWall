@@ -1,0 +1,40 @@
+name: Build and release installer ISO
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Build installer ISO
+        run: |
+          nix build .#nixosConfigurations.installerIso.config.system.build.isoImage
+          ls -R
+
+      - name: Create / update GitHub Release and upload ISO
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "NixWall ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          files: |
+            result/iso/*.iso
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
