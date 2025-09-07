@@ -50,3 +50,11 @@ highly regarded.
 ## Documentation
 
 - [Test suite](docs/testing.md)
+
+## License
+
+NixWall is licensed under the GNU General Public License v3.0 (GPLv3).
+
+Copyright © 2025 Mattias Kockum and the NixWall contributors.
+
+See the LICENSE file for details.
