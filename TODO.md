@@ -1,9 +1,5 @@
 # TODO
 
-- [ ] Format nix code properly (linter)
-- [ ] Reread everything
-- [ ] Clean Git history
-
 ## Core
 
 - [ ] More guided installer
@@ -30,6 +26,7 @@
 
 ## Optionnal
 
+- [ ] Create a fully offline installer
 - [ ] Add more disko layouts (disk encryption, ZFS etc)
 - [ ] Add MFA
 - [ ] VXLAN, EBGP
