@@ -53,7 +53,7 @@ sudo virt-install \
 
 ### Full online testing
 
-Requires having a routed vmbr0 and an offline vmbr1.
+If you want to benefit from a NATed virtual network use this.
 
 ```sh
 nix build .#nixosConfigurations.installerIso.config.system.build.isoImage
@@ -64,7 +64,26 @@ sudo virt-install \
   --os-variant generic \
   --cdrom "result/iso/$ISO_FILE" \
   --disk size=20,format=qcow2,bus=virtio \
-  --network bridge=vmbr0,model=virtio,mac=52:54:00:aa:00:01 \
+  --network network=default,model=virtio,mac=52:54:00:aa:00:01 \
+  --network bridge=vmbr1,model=virtio,mac=52:54:00:aa:00:02 \
+  --graphics spice \
+  --boot useserial=off \
+  --noautoconsole --wait 0
+```
+
+Otherwise use this.
+(Requires having a routed vmbr0 and an offline vmbr1.)
+
+```sh
+nix build .#nixosConfigurations.installerIso.config.system.build.isoImage
+ISO_FILE=$(ls result/iso)
+sudo virt-install \
+  --name nixwall \
+  --ram 8192 --vcpus 4 \
+  --os-variant generic \
+  --cdrom "result/iso/$ISO_FILE" \
+  --disk size=20,format=qcow2,bus=virtio \
+  --network bridge=vmbr0,model=virtio,mac=52:54:00:aa:00:02 \
   --network bridge=vmbr1,model=virtio,mac=52:54:00:aa:00:02 \
   --graphics spice \
   --boot useserial=off \
