@@ -31,7 +31,7 @@ set_defaults() {
 
 usage() {
 	cat <<EOF
-nixwall-install — offline installer for NixWall
+nixwall-install — installer for NixWall
 
 USAGE:
   nixwall-install [--flake PATH] [--disko PATH] [--host NAME] [-y]

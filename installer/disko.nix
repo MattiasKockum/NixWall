@@ -1,7 +1,7 @@
-{lib, ...}: {
+{
   disko.devices = {
     disk.disk1 = {
-      device = lib.mkDefault "/dev/vda"; # CHANGE ME
+      device = "/dev/vda"; # CHANGE ME
       type = "disk";
       content = {
         type = "gpt";

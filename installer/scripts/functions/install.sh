@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-do_offline_install() {
-	header "Running nixos-install (offline)…"
+do_install() {
+	header "Running nixos-install"
 	nixos-install --no-root-passwd --flake "/root/etc/nixos#${HOST}"
 
 	mkdir -p /mnt/etc/nixos

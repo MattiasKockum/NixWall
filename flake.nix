@@ -26,7 +26,7 @@
           ./installer/disko.nix
           ./profiles/default.nix
         ];
-        specialArgs = {inherit self nixpkgs;};
+        specialArgs = {inherit self;};
       };
 
       installerIso = nixpkgs.lib.nixosSystem {
@@ -37,7 +37,7 @@
           })
           ./installer/iso.nix
         ];
-        specialArgs = {inherit self nixpkgs;};
+        specialArgs = {inherit self;};
       };
 
       nixwallTestVM = nixpkgs.lib.nixosSystem {

@@ -9,7 +9,7 @@ fi
 . "$SELF_DIR/lib/common.sh"
 . "$SELF_DIR/functions/confirm.sh"
 . "$SELF_DIR/functions/run_disko.sh"
-. "$SELF_DIR/functions/offline_install.sh"
+. "$SELF_DIR/functions/install.sh"
 
 main() {
 	set_defaults
@@ -19,7 +19,7 @@ main() {
 	header "Planning…"
 	confirm_or_exit
 	run_disko
-	do_offline_install
+	do_install
 }
 
 main "$@"
