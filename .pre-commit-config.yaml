@@ -32,13 +32,27 @@ repos:
         args: ["-e", "SC1091"]
         files: '(installer/scripts/.*\.sh$|\.sh$|nixwall-install$)'
 
-
       - id: shfmt
         name: shfmt
         language: system
         entry: shfmt
         args: ["-w"]
         files: '(installer/scripts/.*\.sh$|\.sh$|nixwall-install$)'
+
+      # --- Python lint / format ---
+      - id: ruff
+        name: ruff (lint)
+        language: system
+        entry: ruff
+        args: ["check", "--fix"]
+        types_or: [python, pyi]
+
+      - id: ruff-format
+        name: ruff (format)
+        language: system
+        entry: ruff
+        args: ["format"]
+        types_or: [python, pyi]
 
       # --- Markdown lint ---
       - id: markdownlint

@@ -4,28 +4,47 @@ import subprocess
 import uuid
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Body, Query
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Body, Query
 from fastapi.responses import JSONResponse, PlainTextResponse
 import uvicorn
+
+import pam
+from fastapi.security import HTTPBasic
+
+app = FastAPI(title="NixWall API")
+
+security = HTTPBasic()
 
 
 def env(name: str, default: str) -> str:
     return os.environ.get(name, default)
 
 
-IP   = env("NW_IP_BIN", "ip")
-GIT  = env("NW_GIT_BIN", "git")
-NXR  = env("NW_NIXOS_REBUILD_BIN", "nixos-rebuild")
-NIX  = env("NW_NIX_BIN", "nix")
-SDR  = env("NW_SYSTEMD_RUN_BIN", "systemd-run")
-SCT  = env("NW_SYSTEMCTL_BIN", "systemctl")
-JCT  = env("NW_JOURNALCTL_BIN", "journalctl")
+PAM_SERVICE = os.environ.get("NW_PAM_SERVICE", "nixwall-auth")
+
+IP = env("NW_IP_BIN", "ip")
+GIT = env("NW_GIT_BIN", "git")
+NXR = env("NW_NIXOS_REBUILD_BIN", "nixos-rebuild")
+NIX = env("NW_NIX_BIN", "nix")
+SDR = env("NW_SYSTEMD_RUN_BIN", "systemd-run")
+SCT = env("NW_SYSTEMCTL_BIN", "systemctl")
+JCT = env("NW_JOURNALCTL_BIN", "journalctl")
 
 CONFIG_PATH = env("NW_CONFIG_PATH", "/etc/nixos/config.json")
-REPO_DIR    = env("NW_REPO_DIR", "/etc/nixos")
-FLAKE       = env("NW_FLAKE", "/etc/nixos")
+REPO_DIR = env("NW_REPO_DIR", "/etc/nixos")
+FLAKE = env("NW_FLAKE", "/etc/nixos")
 
-app = FastAPI(title="NixWall API")
+
+def require_auth(creds=Depends(security)):
+    pam_auth = pam.pam()
+    if not pam_auth.authenticate(creds.username, creds.password, service=PAM_SERVICE):
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return creds.username
+
+
+router = APIRouter(dependencies=[Depends(require_auth)])
 
 
 def _run(cmd, cwd=None):
@@ -33,8 +52,8 @@ def _run(cmd, cwd=None):
     return p
 
 
-@app.get("/interfaces")
-def list_interfaces():
+@router.get("/interfaces")
+def list_interfaces(user: str = Depends(require_auth)):
     p = _run([IP, "-j", "addr", "show"])
     if p.returncode != 0:
         raise HTTPException(status_code=500, detail=p.stderr.strip() or "ip failed")
@@ -44,8 +63,8 @@ def list_interfaces():
         return PlainTextResponse(p.stdout, media_type="text/plain")
 
 
-@app.get("/config")
-def get_config():
+@router.get("/config")
+def get_config(user: str = Depends(require_auth)):
     try:
         with open(CONFIG_PATH, "r") as f:
             data = json.load(f)
@@ -58,7 +77,7 @@ def get_config():
 
 
 @app.put("/config")
-def put_config(cfg: dict = Body(...)):
+def put_config(cfg: dict = Body(...), user: str = Depends(require_auth)):
     tmp = CONFIG_PATH + ".tmp"
     with open(tmp, "w") as f:
         json.dump(cfg, f, indent=2, sort_keys=True)
@@ -68,18 +87,29 @@ def put_config(cfg: dict = Body(...)):
 
 
 @app.post("/git/commit")
-def git_commit(message: str = Body(..., embed=True)):
+def git_commit(message: str = Body(..., embed=True), user: str = Depends(require_auth)):
     if not os.path.isdir(os.path.join(REPO_DIR, ".git")):
         raise HTTPException(status_code=400, detail="Not a git repository")
     out = []
     for cmd in ([GIT, "add", "-A"], [GIT, "commit", "-m", message]):
         p = _run(cmd, cwd=REPO_DIR)
-        out.append({"cmd": " ".join(cmd), "rc": p.returncode, "stdout": p.stdout, "stderr": p.stderr})
+        out.append(
+            {
+                "cmd": " ".join(cmd),
+                "rc": p.returncode,
+                "stdout": p.stdout,
+                "stderr": p.stderr,
+            }
+        )
     return {"steps": out}
 
 
 @app.post("/git/push")
-def git_push(remote: str = Body("origin", embed=True), branch: str = Body("HEAD", embed=True)):
+def git_push(
+    remote: str = Body("origin", embed=True),
+    branch: str = Body("HEAD", embed=True),
+    user: str = Depends(require_auth),
+):
     if not os.path.isdir(os.path.join(REPO_DIR, ".git")):
         raise HTTPException(status_code=400, detail="Not a git repository")
     p = _run([GIT, "push", remote, branch], cwd=REPO_DIR)
@@ -89,7 +119,16 @@ def git_push(remote: str = Body("origin", embed=True), branch: str = Body("HEAD"
 def _detect_attr(preferred: Optional[str]) -> str:
     if preferred:
         return preferred
-    p = _run([NIX, "eval", "--json", FLAKE + "#nixosConfigurations", "--apply", "builtins.attrNames"])
+    p = _run(
+        [
+            NIX,
+            "eval",
+            "--json",
+            FLAKE + "#nixosConfigurations",
+            "--apply",
+            "builtins.attrNames",
+        ]
+    )
     if p.returncode != 0:
         return "nixwall"
     try:
@@ -106,7 +145,9 @@ def _detect_attr(preferred: Optional[str]) -> str:
 def _queue_rebuild(mode: str, attr: Optional[str], extra_args: Optional[List[str]]):
     mode = mode or "switch"
     if mode not in ("switch", "boot", "test"):
-        raise HTTPException(status_code=400, detail="mode must be one of: switch, boot, test")
+        raise HTTPException(
+            status_code=400, detail="mode must be one of: switch, boot, test"
+        )
 
     target = _detect_attr(attr)
     job_id = uuid.uuid4().hex[:10]
@@ -114,12 +155,20 @@ def _queue_rebuild(mode: str, attr: Optional[str], extra_args: Optional[List[str
 
     cmd = [
         SDR,
-        "--unit", unit,
-        "--description", f"NixWall apply ({mode}) via API",
+        "--unit",
+        unit,
+        "--description",
+        f"NixWall apply ({mode}) via API",
         "--collect",
-        "--property", "After=network-online.target",
-        "--property", "Wants=network-online.target",
-        NXR, mode, "--flake", f"{FLAKE}#{target}", "-L",
+        "--property",
+        "After=network-online.target",
+        "--property",
+        "Wants=network-online.target",
+        NXR,
+        mode,
+        "--flake",
+        f"{FLAKE}#{target}",
+        "-L",
     ]
     if extra_args:
         cmd.extend(extra_args)
@@ -128,7 +177,12 @@ def _queue_rebuild(mode: str, attr: Optional[str], extra_args: Optional[List[str
     if p.returncode != 0:
         raise HTTPException(
             status_code=500,
-            detail={"message": "systemd-run failed", "rc": p.returncode, "stderr": p.stderr, "stdout": p.stdout},
+            detail={
+                "message": "systemd-run failed",
+                "rc": p.returncode,
+                "stderr": p.stderr,
+                "stdout": p.stdout,
+            },
         )
     return job_id, unit
 
@@ -138,13 +192,34 @@ def apply_config(
     mode: str = Body("switch", embed=True),
     attr: Optional[str] = Body(None, embed=True),
     extraArgs: Optional[List[str]] = Body(None, embed=True),
+    user: str = Depends(require_auth),
 ):
     job_id, unit = _queue_rebuild(mode, attr, extraArgs)
-    return {"status": "queued", "id": job_id, "unit": unit, "mode": mode, "attr": _detect_attr(attr)}
+    return {
+        "status": "queued",
+        "id": job_id,
+        "unit": unit,
+        "mode": mode,
+        "attr": _detect_attr(attr),
+    }
 
 
 def _unit_status(unit: str):
-    p = _run([SCT, "show", unit, "-p", "ActiveState", "-p", "SubState", "-p", "ExecMainStatus", "-p", "Result"])
+    p = _run(
+        [
+            SCT,
+            "show",
+            unit,
+            "-p",
+            "ActiveState",
+            "-p",
+            "SubState",
+            "-p",
+            "ExecMainStatus",
+            "-p",
+            "Result",
+        ]
+    )
     if p.returncode != 0:
         raise HTTPException(status_code=404, detail="unit not found")
     result = {}
@@ -161,14 +236,18 @@ def _unit_status(unit: str):
     return result
 
 
-@app.get("/apply/{job_id}")
-def apply_status(job_id: str):
+@router.get("/apply/{job_id}")
+def apply_status(job_id: str, user: str = Depends(require_auth)):
     unit = f"nixwall-apply-{job_id}.service"
     return {"id": job_id, "unit": unit, "status": _unit_status(unit)}
 
 
-@app.get("/apply/{job_id}/logs")
-def apply_logs(job_id: str, lines: int = Query(200, ge=1, le=5000)):
+@router.get("/apply/{job_id}/logs")
+def apply_logs(
+    job_id: str,
+    lines: int = Query(200, ge=1, le=5000),
+    user: str = Depends(require_auth),
+):
     unit = f"nixwall-apply-{job_id}.service"
     p = _run([JCT, "-u", unit, "--no-pager", "--output=short-iso", "-n", str(lines)])
     if p.returncode != 0:
@@ -176,12 +255,23 @@ def apply_logs(job_id: str, lines: int = Query(200, ge=1, le=5000)):
     return PlainTextResponse(p.stdout, media_type="text/plain")
 
 
+app.include_router(router)
+
+
 def main():
     host = env("NW_API_HOST", "127.0.0.1")
     port = int(env("NW_API_PORT", "8080"))
-    uvicorn.run(app, host=host, port=port)
+    cert = env("NW_API_TLS_CERT", "")
+    key = env("NW_API_TLS_KEY", "")
+
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        ssl_certfile=cert or None,
+        ssl_keyfile=key or None,
+    )
 
 
 if __name__ == "__main__":
     main()
-

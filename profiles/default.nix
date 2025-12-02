@@ -10,6 +10,8 @@
     ../modules/dns.nix
     ../modules/users.nix
     ../modules/api.nix
+    ../modules/certs.nix
+    ../modules/pam.nix
     ../modules/dashboard.nix
     ../modules/git.nix
     ../modules/boot.nix

@@ -47,6 +47,10 @@
     else getIPForZone listenZone;
 
   nixwallApiPkg = pkgs.callPackage ../pkgs/nixwall-api.nix {};
+
+  tls = config.nixwall.tls or {};
+  tlsCert = tls.certFile or null;
+  tlsKey = tls.keyFile  or null;
 in {
   options.services.api = {
     enable = lib.mkEnableOption "NixWall API (FastAPI)";
@@ -83,8 +87,14 @@ in {
     systemd.services.nixwall-api = {
       description = "NixWall API (FastAPI)";
       wantedBy = ["multi-user.target"];
-      after = ["network-online.target"];
-      wants = ["network-online.target"];
+      after = [
+        "network-online.target"
+        "nixwall-tls.service"
+      ];
+      wants = [
+        "network-online.target"
+        "nixwall-tls.service"
+      ];
 
       path = [
         pkgs.iproute2
@@ -106,6 +116,9 @@ in {
           "NW_CONFIG_PATH=/etc/nixos/config.json"
           "NW_REPO_DIR=/etc/nixos"
           "NW_FLAKE=/etc/nixos"
+          "NW_API_TLS_CERT=${tlsCert}"
+          "NW_API_TLS_KEY=${tlsKey}"
+          "NW_PAM_SERVICE=${config.nixwall.auth.pamService}"
           "PYTHONUNBUFFERED=1"
         ];
 
