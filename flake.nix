@@ -65,7 +65,7 @@
       "api" = import ./tests/test-scripts/api.nix {inherit pkgs;};
       "firewall-rules" = import ./tests/test-scripts/firewall-rules.nix {inherit pkgs;};
       "nat" = import ./tests/test-scripts/nat.nix {inherit pkgs;};
-      "build" = import ./tests/test-scripts/build.nix {inherit pkgs nixpkgs self;};
+      "certs" = import ./tests/test-scripts/certs.nix {inherit pkgs nixpkgs self;};
     });
   };
 }
