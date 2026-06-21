@@ -2,7 +2,7 @@
 
 ![NixWall logo](./assets/logo/nixwall-colour.svg)
 
-This project aims to create a modern, declarative and reproductible Firewall
+This project aims to create a modern, declarative and reproducible Firewall
 based on NixOS.
 WARNING : This project is still in alpha and not yet fit for production.
 Expect important and breaking changes.
@@ -15,7 +15,7 @@ today's firewalls have which:
 - Are easy to be locked out of
 - Are hard to update
 - Are hard to rollback to an earlier configuration
-- Are hard to reproduce accross machines
+- Are hard to reproduce across machines
 - Are hard to configure correctly
 - Are hard to test
 - Lack modern features Linux offer that FreeBSD doesn't
@@ -28,9 +28,9 @@ firewall that the user needs.
 That way:
 
 - The end user never has to write Nix code.
-- The Nix developper only writes Nix modules and don't touch the specific
-json configuration.
-- The API can easely talk with the json configuration.
+- The Nix developer only writes Nix modules and don't touch the specific
+  json configuration.
+- The API can easily talk with the json configuration.
 - The json configuration is easier to debug.
 
 ## How to start

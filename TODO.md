@@ -24,7 +24,7 @@
 
 - [ ] Run tests automatically on github
 
-## Optionnal
+## Optional
 
 - [ ] Create a fully offline installer
 - [ ] Add more disko layouts (disk encryption, ZFS etc)
@@ -33,6 +33,5 @@
 - [ ] EDNS
 - [ ] Cloud init
 - [ ] OpenVPN
-- [ ] SELINUX
 - [ ] Self signed certificate and certificate creation
 - [ ] Impermanence

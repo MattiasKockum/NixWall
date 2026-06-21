@@ -1,4 +1,4 @@
-{python3Packages}:
+{ python3Packages }:
 python3Packages.buildPythonPackage {
   pname = "nixwall-api";
   version = "0.1.0";
@@ -16,5 +16,5 @@ python3Packages.buildPythonPackage {
     python-pam
   ];
 
-  pythonImportsCheck = ["nixwall_api"];
+  pythonImportsCheck = [ "nixwall_api" ];
 }

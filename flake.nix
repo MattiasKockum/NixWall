@@ -3,69 +3,124 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    disko = {
-      url = "github:nix-community/disko";
+    pre-commit-hooks = {
+      url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    disko,
-    ...
-  }: let
-    systems = ["x86_64-linux" "aarch64-linux"];
-    forAllSystems = f: nixpkgs.lib.genAttrs systems f;
-  in {
-    nixosConfigurations = {
-      nixwall = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          disko.nixosModules.disko
-          ./installer/disko.nix
-          ./profiles/default.nix
-        ];
-        specialArgs = {inherit self;};
+  outputs =
+    {
+      self,
+      nixpkgs,
+      pre-commit-hooks,
+      ...
+    }:
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+      forAllSystems = f: nixpkgs.lib.genAttrs systems f;
+
+      preCommitConfig =
+        system:
+        pre-commit-hooks.lib.${system}.run {
+          src = ./.;
+          hooks = {
+            nixfmt.enable = true;
+            statix.enable = true;
+            deadnix.enable = true;
+            nil.enable = true;
+            trim-trailing-whitespace.enable = true;
+            end-of-file-fixer.enable = true;
+            shellcheck = {
+              enable = true;
+              excludes = [ ".envrc" ];
+            };
+            ruff.enable = true;
+            ruff-format.enable = true;
+            prettier.enable = true;
+            markdownlint.enable = true;
+            typos.enable = true;
+            check-json.enable = true;
+          };
+        };
+
+    in
+    {
+      nixosModules = {
+        nixwall = import ./modules/nixwall.nix;
+        nixwall-options = import ./modules/core/nixwall-options.nix;
+        network = import ./modules/core/network.nix;
+        firewall = import ./modules/core/firewall-rules.nix;
+        dhcp = import ./modules/core/dhcp.nix;
+        dns = import ./modules/core/dns.nix;
+        ssh = import ./modules/core/ssh.nix;
+        users = import ./modules/core/users.nix;
       };
 
-      installerIso = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          ({modulesPath, ...}: {
-            imports = [(modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix")];
-          })
-          ./installer/iso.nix
-        ];
-        specialArgs = {inherit self;};
-      };
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          nixwall-api = pkgs.callPackage ./pkgs/nixwall-api.nix { };
+          default = self.packages.${system}.nixwall-api;
+        }
+      );
 
-      nixwallTestVM = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          ./profiles/default.nix
-          ./tests/virtual-machines/heavy-firewall-vm.nix
-          ./tests/virtual-machines/vm-adapter.nix
-        ];
-        specialArgs = {inherit self nixpkgs;};
-      };
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          default = pkgs.mkShell {
+            inherit (preCommitConfig system) shellHook;
+            packages = with pkgs; [
+              nixfmt
+              statix
+              deadnix
+              nil
+              shellcheck
+              ruff
+              prettier
+              markdownlint-cli
+              typos
+            ];
+          };
+        }
+      );
+
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+          unit = path: import path { inherit pkgs; };
+          integration = path: import path { inherit pkgs; };
+        in
+        {
+          # Linter
+          pre-commit = preCommitConfig system;
+
+          # Unit
+          "unit/certs" = unit ./tests/test-scripts/unit/certs.nix;
+          "unit/dhcp" = unit ./tests/test-scripts/unit/dhcp.nix;
+          "unit/dns-setting" = unit ./tests/test-scripts/unit/dns-setting.nix;
+          "unit/network" = unit ./tests/test-scripts/unit/network.nix;
+          "unit/ssh" = unit ./tests/test-scripts/unit/ssh.nix;
+          "unit/users" = unit ./tests/test-scripts/unit/users.nix;
+          "unit/seed-config" = unit ./tests/test-scripts/unit/seed-config.nix;
+          "unit/dashboard" = unit ./tests/test-scripts/unit/dashboard.nix;
+
+          # Integration
+          "integration/nat" = integration ./tests/test-scripts/integration/nat.nix;
+          "integration/firewall-rules" = integration ./tests/test-scripts/integration/firewall-rules.nix;
+          "integration/dns-server" = integration ./tests/test-scripts/integration/dns-server.nix;
+          "integration/api" = integration ./tests/test-scripts/integration/api.nix;
+        }
+      );
     };
-
-    checks = forAllSystems (system: let
-      pkgs = import nixpkgs {inherit system;};
-    in {
-      "seed-config" = import ./tests/test-scripts/seed-config.nix {inherit pkgs;};
-      "network" = import ./tests/test-scripts/network.nix {inherit pkgs;};
-      "users" = import ./tests/test-scripts/users.nix {inherit pkgs;};
-      "dashboard" = import ./tests/test-scripts/dashboard.nix {inherit pkgs;};
-      "ssh" = import ./tests/test-scripts/ssh.nix {inherit pkgs;};
-      "dhcp" = import ./tests/test-scripts/dhcp.nix {inherit pkgs;};
-      "dns-setting" = import ./tests/test-scripts/dns-setting.nix {inherit pkgs;};
-      "dns-server" = import ./tests/test-scripts/dns-server.nix {inherit pkgs;};
-      "api" = import ./tests/test-scripts/api.nix {inherit pkgs;};
-      "firewall-rules" = import ./tests/test-scripts/firewall-rules.nix {inherit pkgs;};
-      "nat" = import ./tests/test-scripts/nat.nix {inherit pkgs;};
-      "certs" = import ./tests/test-scripts/certs.nix {inherit pkgs nixpkgs self;};
-    });
-  };
 }
