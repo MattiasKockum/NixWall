@@ -1,20 +1,23 @@
-{ python3Packages }:
-python3Packages.buildPythonPackage {
+{
+  lib,
+  rustPlatform,
+  pam,
+  pkg-config,
+}:
+rustPlatform.buildRustPackage {
   pname = "nixwall-api";
   version = "0.1.0";
   src = ../api;
-  pyproject = true;
-
-  nativeBuildInputs = with python3Packages; [
-    setuptools
-    wheel
+  cargoLock.lockFile = ../api/Cargo.lock;
+  nativeBuildInputs = [
+    pkg-config
+    rustPlatform.bindgenHook
   ];
-
-  propagatedBuildInputs = with python3Packages; [
-    fastapi
-    uvicorn
-    python-pam
-  ];
-
-  pythonImportsCheck = [ "nixwall_api" ];
+  buildInputs = [ pam ];
+  meta = {
+    description = "REST API for NixWall";
+    license = lib.licenses.mit;
+    maintainers = [ ];
+    platforms = lib.platforms.linux;
+  };
 }

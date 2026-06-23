@@ -1,3 +1,4 @@
 /result
 .nixos-test-history
 .direnv/
+api/target/

@@ -7,6 +7,7 @@
       url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs =
@@ -14,6 +15,7 @@
       self,
       nixpkgs,
       pre-commit-hooks,
+      crane,
       ...
     }:
     let
@@ -27,6 +29,7 @@
         system:
         pre-commit-hooks.lib.${system}.run {
           src = ./.;
+          settings.rust.cargoManifestPath = "api/Cargo.toml";
           hooks = {
             nixfmt.enable = true;
             statix.enable = true;
@@ -38,14 +41,35 @@
               enable = true;
               excludes = [ ".envrc" ];
             };
-            ruff.enable = true;
-            ruff-format.enable = true;
+            rustfmt.enable = true;
             prettier.enable = true;
             markdownlint.enable = true;
             typos.enable = true;
             check-json.enable = true;
           };
         };
+
+      craneLib = system: crane.mkLib nixpkgs.legacyPackages.${system};
+
+      apiSrc =
+        system: (craneLib system).cleanCargoSource (nixpkgs.legacyPackages.${system}.lib.cleanSource ./api);
+
+      commonArgs =
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          src = apiSrc system;
+          strictDeps = true;
+          buildInputs = [ pkgs.pam ];
+          nativeBuildInputs = [
+            pkgs.pkg-config
+            pkgs.rustPlatform.bindgenHook
+          ];
+        };
+
+      cargoArtifacts = system: (craneLib system).buildDepsOnly (commonArgs system);
 
     in
     {
@@ -63,10 +87,12 @@
       packages = forAllSystems (
         system:
         let
-          pkgs = import nixpkgs { inherit system; };
+          crane' = craneLib system;
         in
         {
-          nixwall-api = pkgs.callPackage ./pkgs/nixwall-api.nix { };
+          nixwall-api = crane'.buildPackage (
+            (commonArgs system) // { cargoArtifacts = cargoArtifacts system; }
+          );
           default = self.packages.${system}.nixwall-api;
         }
       );
@@ -74,7 +100,7 @@
       devShells = forAllSystems (
         system:
         let
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = nixpkgs.legacyPackages.${system};
         in
         {
           default = pkgs.mkShell {
@@ -85,10 +111,15 @@
               deadnix
               nil
               shellcheck
-              ruff
               prettier
               markdownlint-cli
               typos
+              cargo
+              rustc
+              clippy
+              rustfmt
+              pkg-config
+              pam
             ];
           };
         }
@@ -97,13 +128,28 @@
       checks = forAllSystems (
         system:
         let
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = nixpkgs.legacyPackages.${system};
+          crane' = craneLib system;
+          artifacts = cargoArtifacts system;
           unit = path: import path { inherit pkgs; };
           integration = path: import path { inherit pkgs; };
         in
         {
           # Linter
           pre-commit = preCommitConfig system;
+
+          # Rust
+          nixwall-api-clippy = crane'.cargoClippy {
+            src = apiSrc system;
+            cargoArtifacts = artifacts;
+            buildInputs = [ pkgs.pam ];
+            nativeBuildInputs = [ pkgs.pkg-config ];
+            cargoClippyExtraArgs = "-- -D warnings";
+          };
+          nixwall-api-fmt = crane'.cargoFmt {
+            src = apiSrc system;
+          };
+          nixwall-api-build = self.packages.${system}.nixwall-api;
 
           # Unit
           "unit/certs" = unit ./tests/test-scripts/unit/certs.nix;
