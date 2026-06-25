@@ -19,11 +19,33 @@
       ...
     }:
     let
-      systems = [
+      devSystems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
-      forAllSystems = f: nixpkgs.lib.genAttrs systems f;
+      forDevSystems = f: nixpkgs.lib.genAttrs devSystems f;
+
+      craneLib = system: crane.mkLib nixpkgs.legacyPackages.${system};
+
+      apiSrc =
+        system: (craneLib system).cleanCargoSource (nixpkgs.legacyPackages.${system}.lib.cleanSource ./api);
+
+      commonArgs =
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          src = apiSrc system;
+          strictDeps = true;
+          buildInputs = [ pkgs.pam ];
+          nativeBuildInputs = [
+            pkgs.pkg-config
+            pkgs.rustPlatform.bindgenHook
+          ];
+        };
+
+      cargoArtifacts = system: (craneLib system).buildDepsOnly (commonArgs system);
 
       preCommitConfig =
         system:
@@ -49,28 +71,6 @@
           };
         };
 
-      craneLib = system: crane.mkLib nixpkgs.legacyPackages.${system};
-
-      apiSrc =
-        system: (craneLib system).cleanCargoSource (nixpkgs.legacyPackages.${system}.lib.cleanSource ./api);
-
-      commonArgs =
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          src = apiSrc system;
-          strictDeps = true;
-          buildInputs = [ pkgs.pam ];
-          nativeBuildInputs = [
-            pkgs.pkg-config
-            pkgs.rustPlatform.bindgenHook
-          ];
-        };
-
-      cargoArtifacts = system: (craneLib system).buildDepsOnly (commonArgs system);
-
     in
     {
       nixosModules = {
@@ -84,20 +84,43 @@
         users = import ./modules/core/users.nix;
       };
 
-      packages = forAllSystems (
+      nixosConfigurations = {
+        installerIso = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            (
+              { modulesPath, ... }:
+              {
+                imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
+              }
+            )
+            ./installer/iso.nix
+          ];
+          specialArgs = { inherit self; };
+        };
+      };
+
+      packages = forDevSystems (
         system:
         let
           crane' = craneLib system;
+          base = {
+            nixwall-api = crane'.buildPackage (
+              (commonArgs system) // { cargoArtifacts = cargoArtifacts system; }
+            );
+          };
+          isoPackages =
+            if system == "x86_64-linux" then
+              {
+                installer-iso = self.nixosConfigurations.installerIso.config.system.build.isoImage;
+              }
+            else
+              { };
         in
-        {
-          nixwall-api = crane'.buildPackage (
-            (commonArgs system) // { cargoArtifacts = cargoArtifacts system; }
-          );
-          default = self.packages.${system}.nixwall-api;
-        }
+        base // isoPackages // { default = base.nixwall-api; }
       );
 
-      devShells = forAllSystems (
+      devShells = forDevSystems (
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
@@ -125,7 +148,7 @@
         }
       );
 
-      checks = forAllSystems (
+      checks = forDevSystems (
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
@@ -135,10 +158,8 @@
           integration = path: import path { inherit pkgs; };
         in
         {
-          # Linter
           pre-commit = preCommitConfig system;
 
-          # Rust
           nixwall-api-clippy = crane'.cargoClippy {
             src = apiSrc system;
             cargoArtifacts = artifacts;
@@ -151,7 +172,6 @@
           };
           nixwall-api-build = self.packages.${system}.nixwall-api;
 
-          # Unit
           "unit/certs" = unit ./tests/test-scripts/unit/certs.nix;
           "unit/dhcp" = unit ./tests/test-scripts/unit/dhcp.nix;
           "unit/dns-setting" = unit ./tests/test-scripts/unit/dns-setting.nix;
@@ -161,7 +181,6 @@
           "unit/seed-config" = unit ./tests/test-scripts/unit/seed-config.nix;
           "unit/dashboard" = unit ./tests/test-scripts/unit/dashboard.nix;
 
-          # Integration
           "integration/nat" = integration ./tests/test-scripts/integration/nat.nix;
           "integration/firewall-rules" = integration ./tests/test-scripts/integration/firewall-rules.nix;
           "integration/dns-server" = integration ./tests/test-scripts/integration/dns-server.nix;

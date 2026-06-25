@@ -4,11 +4,8 @@
       loader = {
         grub = {
           enable = true;
-          devices = [ "nodev" ];
-          efiSupport = true;
-          efiInstallAsRemovable = lib.mkDefault true;
+          devices = [ config.disko.devices.disk.disk1.device ];
         };
-        efi.canTouchEfiVariables = false;
       };
       initrd.availableKernelModules = [
         "virtio_pci"
