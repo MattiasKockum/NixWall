@@ -8,6 +8,7 @@
     ./core/dns.nix
     ./core/users.nix
     ./appliance/api.nix
+    ./appliance/packages.nix
     ./appliance/boot.nix
     ./appliance/certs.nix
     ./appliance/dashboard.nix
