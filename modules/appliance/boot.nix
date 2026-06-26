@@ -4,7 +4,6 @@
       loader = {
         grub = {
           enable = true;
-          devices = [ config.disko.devices.disk.disk1.device ];
         };
       };
       initrd.availableKernelModules = [
