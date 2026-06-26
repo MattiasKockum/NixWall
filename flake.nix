@@ -87,16 +87,13 @@
       nixosConfigurations = {
         installerIso = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
-          modules = [
-            (
-              { modulesPath, ... }:
-              {
-                imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
-              }
-            )
-            ./installer/iso.nix
-          ];
+          modules = [ ./installer/iso.nix ];
           specialArgs = { inherit self; };
+        };
+
+        demo-client = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [ ./demo/client.nix ];
         };
       };
 
@@ -113,11 +110,41 @@
             if system == "x86_64-linux" then
               {
                 installer-iso = self.nixosConfigurations.installerIso.config.system.build.isoImage;
+                demo-client-vm = self.nixosConfigurations.demo-client.config.system.build.vm;
               }
             else
               { };
         in
         base // isoPackages // { default = base.nixwall-api; }
+      );
+
+      apps = forDevSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          demo = {
+            type = "app";
+            program = "${
+              pkgs.writeShellApplication {
+                name = "nixwall-demo";
+                runtimeInputs = with pkgs; [
+                  libvirt
+                  coreutils
+                  qemu
+                  e2fsprogs
+                ];
+                text = ''
+                  iso="${self.nixosConfigurations.installerIso.config.system.build.isoImage}"
+                  NIXWALL_ISO="$(find "$iso" -name "*.iso" -not -type d | head -1)"
+                  CLIENT_VM_DISK="${self.packages.x86_64-linux.demo-client-vm}"
+                  ${builtins.readFile ./demo/demo.sh}
+                '';
+              }
+            }/bin/nixwall-demo";
+          };
+        }
       );
 
       devShells = forDevSystems (

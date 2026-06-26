@@ -1,4 +1,6 @@
 {
+  self,
+  modulesPath,
   lib,
   pkgs,
   config,
@@ -8,7 +10,9 @@ let
   installerPkg = pkgs.callPackage ./scripts { };
 in
 {
+
   imports = [
+    (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix")
     modules/greeter.nix
     modules/service-flake-copy.nix
   ];
@@ -18,6 +22,10 @@ in
       source = ./nixos;
       target = "/nixwall";
     }
+  ];
+
+  isoImage.storeContents = [
+    self.packages.x86_64-linux.nixwall-api
   ];
 
   image = {
