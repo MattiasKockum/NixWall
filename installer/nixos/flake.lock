@@ -98,11 +98,11 @@
         "pre-commit-hooks": "pre-commit-hooks"
       },
       "locked": {
-        "lastModified": 1782501594,
-        "narHash": "sha256-rdRpHx7O1aZxmebSrzkfjkAhg5vRcmY1Lnx8Evy1dmc=",
+        "lastModified": 1782502892,
+        "narHash": "sha256-nkZeBFXLg2w0CBNSpOsdERoEqP3fMc2si3+EfLVOygE=",
         "owner": "MattiasKockum",
         "repo": "NixWall",
-        "rev": "7c880e32b5ae777b91062771c57b7181cf18313e",
+        "rev": "7f52b439134c6614419d1203a5175d82417d516f",
         "type": "github"
       },
       "original": {
