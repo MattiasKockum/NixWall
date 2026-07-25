@@ -13,6 +13,7 @@ ssh.authorizedKeys = [
 [users.alice]
 wheel = true
 passwordlessSudo = true
+initialPassword = "changeme"
 ssh.authorizedKeys = [
  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPzZm9OdiwdnERpkPbcL2cLo8BX0OL+JMdTHTeyfLV/G alice@test",
  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDhe+Vg4zqW9WpBTDGyLcIrIcPbxO/ytM53A33QkdtWf alice@test",
