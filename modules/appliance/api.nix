@@ -6,7 +6,7 @@
 }:
 let
   cfg = config.nixwall.appliance.api;
-  parsed = config.nixwall.parsedConfig;
+  parsed = config.nixwall.internal;
   zoneToIface = parsed.interfaces or { };
   addresses = (parsed.network or { }).addresses or { };
   getIPForZone =
@@ -80,7 +80,7 @@ in
             if config.nixwall.configFile != null then
               toString config.nixwall.configFile
             else
-              "/etc/nixos/config.json"
+              "/etc/nixos/config.toml"
           }"
           "NW_REPO_DIR=/etc/nixos"
           "NW_FLAKE=/etc/nixos"

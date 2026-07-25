@@ -1,6 +1,6 @@
 { lib, config, ... }:
 let
-  parsed = config.nixwall.parsedConfig;
+  parsed = config.nixwall.internal;
   localeCfg = parsed.locale or { };
   timeZone = localeCfg.timeZone or "UTC";
   keyMap = localeCfg.consoleKeyMap or "us";

@@ -1,6 +1,6 @@
 { lib, config, ... }:
 let
-  parsed = config.nixwall.parsedConfig;
+  parsed = config.nixwall.internal;
   net = parsed.network or { };
   addrs = net.addresses or { };
   dns = net.dns or [ ];

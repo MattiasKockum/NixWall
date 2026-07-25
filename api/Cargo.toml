@@ -25,3 +25,5 @@ hyper = { version = "1", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "server-auto", "service"] }
 headers = "0.4"
 tower = { version = "0.5", features = ["util"] }
+toml_edit = "0.22"
+toml = "0.8"

@@ -187,13 +187,13 @@
         {
           pre-commit = preCommitConfig system;
 
-          nixwall-api-clippy = crane'.cargoClippy {
-            src = apiSrc system;
-            cargoArtifacts = artifacts;
-            buildInputs = [ pkgs.pam ];
-            nativeBuildInputs = [ pkgs.pkg-config ];
-            cargoClippyExtraArgs = "-- -D warnings";
-          };
+          nixwall-api-clippy = crane'.cargoClippy (
+            (commonArgs system)
+            // {
+              cargoArtifacts = artifacts;
+              cargoClippyExtraArgs = "-- -D warnings";
+            }
+          );
           nixwall-api-fmt = crane'.cargoFmt {
             src = apiSrc system;
           };
@@ -207,6 +207,7 @@
           "unit/users" = unit ./tests/test-scripts/unit/users.nix;
           "unit/seed-config" = unit ./tests/test-scripts/unit/seed-config.nix;
           "unit/dashboard" = unit ./tests/test-scripts/unit/dashboard.nix;
+          "unit/interfaces" = unit ./tests/test-scripts/unit/interfaces.nix;
 
           "integration/nat" = integration ./tests/test-scripts/integration/nat.nix;
           "integration/firewall-rules" = integration ./tests/test-scripts/integration/firewall-rules.nix;

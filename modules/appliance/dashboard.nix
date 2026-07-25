@@ -6,7 +6,7 @@
 }:
 let
   cfg = config.nixwall.appliance.dashboard;
-  parsed = config.nixwall.parsedConfig;
+  parsed = config.nixwall.internal;
 
   zoneToIface = parsed.interfaces or { };
   addresses = (parsed.network or { }).addresses or { };

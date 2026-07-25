@@ -15,6 +15,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use toml_edit::{Array, ArrayOfTables, DocumentMut, InlineTable, Item, Table, Value as TomlValue};
 use tracing::info;
 use uuid::Uuid;
 
@@ -50,7 +51,7 @@ impl Config {
             sdr_bin: e("NW_SYSTEMD_RUN_BIN", "systemd-run"),
             sct_bin: e("NW_SYSTEMCTL_BIN", "systemctl"),
             jct_bin: e("NW_JOURNALCTL_BIN", "journalctl"),
-            config_path: e("NW_CONFIG_PATH", "/etc/nixos/config.json"),
+            config_path: e("NW_CONFIG_PATH", "/etc/nixos/config.toml"),
             repo_dir: e("NW_REPO_DIR", "/etc/nixos"),
             flake: e("NW_FLAKE", "/etc/nixos"),
             host: e("NW_API_HOST", "127.0.0.1"),
@@ -174,31 +175,125 @@ async fn list_interfaces(State(cfg): State<AppState>) -> Response {
     }
 }
 
+fn json_to_value(v: &Value) -> TomlValue {
+    match v {
+        Value::Null => TomlValue::from(""),
+        Value::Bool(b) => TomlValue::from(*b),
+        Value::Number(n) => match n.as_i64() {
+            Some(i) => TomlValue::from(i),
+            None => TomlValue::from(n.as_f64().unwrap_or(0.0)),
+        },
+        Value::String(s) => TomlValue::from(s.as_str()),
+        Value::Array(a) => {
+            let mut arr = Array::new();
+            for e in a {
+                arr.push(json_to_value(e));
+            }
+            TomlValue::Array(arr)
+        }
+        Value::Object(o) => {
+            let mut t = InlineTable::new();
+            for (k, val) in o {
+                t.insert(k, json_to_value(val));
+            }
+            TomlValue::InlineTable(t)
+        }
+    }
+}
+
+fn json_to_item(v: &Value) -> Item {
+    match v {
+        Value::Object(o) => {
+            let mut t = Table::new();
+            for (k, val) in o {
+                t.insert(k, json_to_item(val));
+            }
+            Item::Table(t)
+        }
+        Value::Array(a) if !a.is_empty() && a.iter().all(Value::is_object) => {
+            let mut aot = ArrayOfTables::new();
+            for e in a {
+                if let Value::Object(o) = e {
+                    let mut t = Table::new();
+                    for (k, val) in o {
+                        t.insert(k, json_to_item(val));
+                    }
+                    aot.push(t);
+                }
+            }
+            Item::ArrayOfTables(aot)
+        }
+        _ => Item::Value(json_to_value(v)),
+    }
+}
+
+fn sync_table(table: &mut Table, obj: &serde_json::Map<String, Value>) {
+    let existing: Vec<String> = table.iter().map(|(k, _)| k.to_owned()).collect();
+    for k in existing {
+        if !obj.contains_key(&k) || obj[&k].is_null() {
+            table.remove(&k);
+        }
+    }
+
+    for (k, v) in obj {
+        if v.is_null() {
+            continue;
+        }
+        match (table.get_mut(k), v) {
+            (Some(Item::Table(t)), Value::Object(o)) => sync_table(t, o),
+
+            (Some(Item::Value(old)), _) if !v.is_object() => {
+                let decor = old.decor().clone();
+                *old = json_to_value(v);
+                *old.decor_mut() = decor;
+            }
+
+            _ => {
+                table.insert(k, json_to_item(v));
+            }
+        }
+    }
+}
+
 async fn get_config(State(cfg): State<AppState>) -> Response {
     match std::fs::read_to_string(&cfg.config_path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            api_error(StatusCode::NOT_FOUND, "config.json not found")
+            api_error(StatusCode::NOT_FOUND, "config.toml not found")
         }
         Err(e) => api_error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-        Ok(s) => match serde_json::from_str::<Value>(&s) {
+        Ok(s) => match toml::from_str::<Value>(&s) {
             Ok(v) => Json(v).into_response(),
-            Err(_) => (
-                StatusCode::OK,
-                [(header::CONTENT_TYPE, "application/json")],
-                s,
-            )
-                .into_response(),
+            Err(e) => api_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("invalid TOML in {}: {e}", cfg.config_path),
+            ),
         },
     }
 }
 
 async fn put_config(State(cfg): State<AppState>, Json(body): Json<Value>) -> Response {
-    let tmp = format!("{}.tmp", cfg.config_path);
-    let serialized = match serde_json::to_string_pretty(&body) {
-        Ok(s) => s + "\n",
-        Err(e) => return api_error(StatusCode::BAD_REQUEST, e.to_string()),
+    let Value::Object(obj) = &body else {
+        return api_error(StatusCode::BAD_REQUEST, "body must be a JSON object");
     };
-    if let Err(e) = std::fs::write(&tmp, &serialized) {
+
+    let mut doc = match std::fs::read_to_string(&cfg.config_path) {
+        Ok(s) => match s.parse::<DocumentMut>() {
+            Ok(d) => d,
+            Err(e) => {
+                return api_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("invalid TOML in {}: {e}", cfg.config_path),
+                );
+            }
+        },
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => DocumentMut::new(),
+        Err(e) => return api_error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    };
+
+    sync_table(doc.as_table_mut(), obj);
+
+    let tmp = format!("{}.tmp", cfg.config_path);
+    if let Err(e) = std::fs::write(&tmp, doc.to_string()) {
         return api_error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
     }
     if let Err(e) = std::fs::rename(&tmp, &cfg.config_path) {
@@ -359,7 +454,7 @@ async fn apply_config(State(cfg): State<AppState>, Json(body): Json<ApplyBody>) 
         .into_response()
 }
 
-fn unit_status(cfg: &Config, unit: &str) -> Result<Value, Response> {
+fn unit_status(cfg: &Config, unit: &str) -> Option<Value> {
     let out = run(
         &[
             &cfg.sct_bin,
@@ -377,7 +472,7 @@ fn unit_status(cfg: &Config, unit: &str) -> Result<Value, Response> {
         None,
     );
     if !out.status.success() {
-        return Err(api_error(StatusCode::NOT_FOUND, "unit not found"));
+        return None;
     }
     let mut map = serde_json::Map::new();
     for line in String::from_utf8_lossy(&out.stdout).lines() {
@@ -392,14 +487,14 @@ fn unit_status(cfg: &Config, unit: &str) -> Result<Value, Response> {
             map.insert(k.to_owned(), val);
         }
     }
-    Ok(Value::Object(map))
+    Some(Value::Object(map))
 }
 
 async fn apply_status(State(cfg): State<AppState>, AxumPath(job_id): AxumPath<String>) -> Response {
     let unit = format!("nixwall-apply-{job_id}.service");
     match unit_status(&cfg, &unit) {
-        Ok(status) => Json(json!({"id": job_id, "unit": unit, "status": status})).into_response(),
-        Err(e) => e,
+        Some(status) => Json(json!({"id": job_id, "unit": unit, "status": status})).into_response(),
+        None => api_error(StatusCode::NOT_FOUND, "unit not found"),
     }
 }
 

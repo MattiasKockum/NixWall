@@ -1,4 +1,7 @@
 { pkgs, ... }:
+let
+  cfgs = import ../../configs { inherit pkgs; };
+in
 pkgs.testers.runNixOSTest {
   name = "unit/dashboard";
 
@@ -13,32 +16,20 @@ pkgs.testers.runNixOSTest {
         enable = true;
         dashboard.enable = true;
       };
-      config = {
-        version = 1;
-        interfaces = {
-          LAN = "eth0";
-          WAN = "eth1";
-        };
-        network = {
-          hostname = "nixwall";
-          addresses = {
-            LAN = "10.10.10.1/24";
-            WAN = "10.100.100.1/24";
-          };
-          gateway = "10.100.100.254";
-          dns = [ "10.100.100.10" ];
-        };
-        firewall.rules = [
-          {
-            name = "dashboard";
-            from = "LAN";
-            to = "FW";
-            proto = "tcp";
-            ports = 80;
-            action = "accept";
-          }
-        ];
-      };
+      config = cfgs.mk [
+        {
+          firewall.rules = [
+            {
+              name = "dashboard";
+              from = "LAN";
+              to = "FW";
+              proto = "tcp";
+              ports = 80;
+              action = "accept";
+            }
+          ];
+        }
+      ];
     };
   };
 

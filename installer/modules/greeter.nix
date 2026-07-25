@@ -16,9 +16,9 @@ let
     - vim and nano are available.
     - The flake targeted for installation has been copied automatically from /iso to /root to be edited there before installation.
     - Run `lsblk` to see what your disks are. Then, edit the file under `/root/etc/nixos/disko.nix` accordingly.
-    - Run `ip link` to see your interfaces. Then, edit the file under `/root/etc/nixos/config.json` accordingly.
-    - Don't forget to edit '/root/etc/nixos/config.json' locale values.
-    - By default, the config.json holds a lot of boilerplate, feel free to remove them as much as you want.
+    - Run `ip link` to see your interfaces. Then, edit the file under `/root/etc/nixos/config.toml` accordingly.
+    - Don't forget to edit '/root/etc/nixos/config.toml' locale values.
+    - By default, the config.toml holds a lot of boilerplate, feel free to remove them as much as you want.
     - The default password is "changeme" and the default user is "alice".
     - Run `nixwall-install` to start the installation, then 'reboot'.
   '';

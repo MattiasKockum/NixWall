@@ -1,0 +1,99 @@
+# NixWall configuration.
+
+version = 1
+hostname = "nixwall"
+
+[locale]
+timeZone = "Europe/Paris"
+consoleKeyMap = "en"
+consoleFont = "Lat2-Terminus16"
+
+# --- System users ------------------------------------------------------------
+[users.root]
+ssh.authorizedKeys = [
+ # "ssh-ed25519 AAAA... you@host"
+]
+
+[users.alice]
+wheel = true
+passwordlessSudo = true
+ssh.authorizedKeys = [
+ # "ssh-ed25519 AAAA... alice@host"
+]
+
+# --- Zones -------------------------------------------------------------------
+
+[zones.LAN]
+name = "eth0"
+#mac = "aa:bb:cc:dd:ee:ff"
+address = "10.10.10.1/24"
+masquerade = true
+
+[zones.LAN.dhcp]
+range = "10.10.10.50-10.10.10.150"
+leaseSeconds = 86400
+
+[zones.WAN]
+name = "eth1"
+#mac = "aa:bb:cc:dd:ee:ff"
+mode = "dhcp"
+# For a static WAN instead, delete mode and set:
+# address = "192.0.2.2/24"
+# gateway = "192.0.2.1"
+# dns     = ["9.9.9.9"]
+
+# --- Firewall ----------------------------------------------------------------
+
+[firewall.policies]
+input = "drop"
+forward = "drop"
+output = "accept"
+
+[[firewall.rules]]
+name = "ssh-from-lan"
+from = "LAN"
+to = "FW"
+proto = "tcp"
+ports = 22
+action = "accept"
+
+[[firewall.rules]]
+name = "dashboard"
+from = "LAN"
+to = "FW"
+proto = "tcp"
+ports = 80
+action = "accept"
+
+[[firewall.rules]]
+name = "api"
+from = "LAN"
+to = "FW"
+proto = "tcp"
+ports = 8080
+action = "accept"
+
+[[firewall.rules]]
+name = "lan-to-wan"
+from = "LAN"
+to = "WAN"
+proto = "any"
+action = "accept"
+
+# --- Services ----------------------------------------------------------------
+
+[services.api]
+enable = true
+listenZones = ["LAN"]
+port = 8080
+
+[services.dashboard]
+enable = true
+listenZones = ["LAN"]
+port = 80
+
+[services.ssh]
+enable = true
+listenZones = ["LAN"]
+passwordAuth = false
+permitRootLogin = "prohibit-password"

@@ -1,5 +1,7 @@
 { pkgs, ... }:
 let
+  cfgs = import ../../configs { inherit pkgs; };
+
   mkKey =
     name:
     pkgs.runCommand "ssh-key-${name}" { } ''
@@ -24,59 +26,43 @@ pkgs.testers.runNixOSTest {
 
       nixwall = {
         enable = true;
-        config = {
-          version = 1;
-          interfaces = {
-            LAN = "eth0";
-            WAN = "eth1";
-          };
-          usersDefaults.initialPassword = "changeme";
-          users = {
-            alice = {
-              wheel = true;
-              passwordlessSudo = true;
-            };
-            bob = {
-              groups = [ "developers" ];
-            };
-          };
-          network = {
-            hostname = "nixwall";
-            addresses = {
-              LAN = "10.10.10.1/24";
-              WAN = "10.100.100.1/24";
-            };
-            gateway = "10.100.100.254";
-            dns = [ "10.100.100.10" ];
-          };
-          firewall.rules = [
+        config = cfgs.mk (
+          with cfgs.layers;
+          [
+            demoUsers
             {
-              name = "ssh";
-              from = "LAN";
-              to = "FW";
-              proto = "tcp";
-              ports = 22;
-              action = "accept";
-            }
-          ];
-          services.ssh = {
-            enable = true;
-            listenZones = [ "LAN" ];
-            passwordAuth = false;
-            permitRootLogin = "prohibit-password";
-            root.authorizedKeys = [ (builtins.readFile "${rootKey}/key.pub") ];
-            users = {
-              alice = {
-                sshAuthorizedKeys = [
-                  (builtins.readFile "${aliceKey}/key.pub")
-                  (builtins.readFile "${alice2Key}/key.pub")
-                ];
-                passwordlessSudo = true;
+              users = {
+                root.ssh.authorizedKeys = [ (builtins.readFile "${rootKey}/key.pub") ];
+                alice = {
+                  passwordlessSudo = true;
+                  ssh.authorizedKeys = [
+                    (builtins.readFile "${aliceKey}/key.pub")
+                    (builtins.readFile "${alice2Key}/key.pub")
+                  ];
+                };
+                bob.ssh.authorizedKeys = [ (builtins.readFile "${bobKey}/key.pub") ];
               };
-              bob.sshAuthorizedKeys = [ (builtins.readFile "${bobKey}/key.pub") ];
-            };
-          };
-        };
+
+              firewall.rules = [
+                {
+                  name = "ssh";
+                  from = "LAN";
+                  to = "FW";
+                  proto = "tcp";
+                  ports = 22;
+                  action = "accept";
+                }
+              ];
+
+              services.ssh = {
+                enable = true;
+                listenZones = [ "LAN" ];
+                passwordAuth = false;
+                permitRootLogin = "prohibit-password";
+              };
+            }
+          ]
+        );
       };
     };
 
@@ -105,10 +91,10 @@ pkgs.testers.runNixOSTest {
         text = ''
           set -euo pipefail
           mkdir -p /run/ssh-test
-          cp ${rootKey}/key   /run/ssh-test/root
-          cp ${aliceKey}/key  /run/ssh-test/alice1
+          cp ${rootKey}/key /run/ssh-test/root
+          cp ${aliceKey}/key /run/ssh-test/alice1
           cp ${alice2Key}/key /run/ssh-test/alice2
-          cp ${bobKey}/key    /run/ssh-test/bob
+          cp ${bobKey}/key /run/ssh-test/bob
           chmod 600 /run/ssh-test/root \
                     /run/ssh-test/alice1 \
                     /run/ssh-test/alice2 \
@@ -128,16 +114,16 @@ pkgs.testers.runNixOSTest {
 
     print(nixwall.succeed("sshd -T | grep -i listen"))
 
-    client.succeed(f"{ssh} -i /run/ssh-test/root   root@10.10.10.1  'id -un' | grep -x root")
+    client.succeed(f"{ssh} -i /run/ssh-test/root root@10.10.10.1 'id -un' | grep -x root")
 
     client.succeed(f"{ssh} -i /run/ssh-test/alice1 alice@10.10.10.1 'id -un' | grep -x alice")
 
     client.succeed(f"{ssh} -i /run/ssh-test/alice2 alice@10.10.10.1 'id -un' | grep -x alice")
 
-    client.succeed(f"{ssh} -i /run/ssh-test/bob    bob@10.10.10.1   'id -un' | grep -x bob")
+    client.succeed(f"{ssh} -i /run/ssh-test/bob bob@10.10.10.1 'id -un' | grep -x bob")
 
     client.fail(f"{ssh} -o PreferredAuthentications=password -o PubkeyAuthentication=no alice@10.10.10.1 true")
-    client.fail(f"{ssh} -o PreferredAuthentications=password -o PubkeyAuthentication=no root@10.10.10.1  true")
+    client.fail(f"{ssh} -o PreferredAuthentications=password -o PubkeyAuthentication=no root@10.10.10.1 true")
 
     client.fail(f"{ssh} -i /run/ssh-test/alice1 bob@10.10.10.1 'id -un'")
 

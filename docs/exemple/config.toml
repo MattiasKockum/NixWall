@@ -1,0 +1,111 @@
+# NixWall - annotated example exercising most options.
+# This is a reference, for how one can use this config file.
+
+version = 1
+hostname = "nixwall"
+
+# --- System users ------------------------------------------------------------
+[users.root]
+ssh.authorizedKeys = [
+ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDWmjs0Zo1u+9NjrJBSi0Dsds3lTrrOsm0DfkS1b+pdz root@test",
+]
+
+[users.alice]
+wheel = true
+passwordlessSudo = true
+ssh.authorizedKeys = [
+ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPzZm9OdiwdnERpkPbcL2cLo8BX0OL+JMdTHTeyfLV/G alice@test",
+ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDhe+Vg4zqW9WpBTDGyLcIrIcPbxO/ytM53A33QkdtWf alice@test",
+]
+
+[users.bob]
+groups = ["developers"]
+ssh.authorizedKeys = [
+ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBtzGrILUf6GhgSWrO9dCICmqprYRWXAbnpmiYFPvWVW bob@test",
+]
+
+# --- Zones -------------------------------------------------------------------
+[zones.LAN]
+name = "eth0"
+address = "10.10.10.1/24"
+masquerade = true
+
+[zones.LAN.dhcp]
+range = "10.10.10.50-10.10.10.150"
+leaseSeconds = 86400
+
+# Static WAN, shown filled in. Swap `mode = "dhcp"` in for an upstream lease.
+[zones.WAN]
+mac = "52:54:00:12:34:56"
+address = "10.100.100.1/24"
+gateway = "10.100.100.254"
+dns = ["10.100.100.10"]
+
+# --- Firewall ----------------------------------------------------------------
+[firewall.policies]
+input = "drop"
+forward = "drop"
+output = "accept"
+
+[[firewall.rules]]
+name = "ssh-from-lan"
+from = "LAN"
+to = "FW"
+proto = "tcp"
+ports = 22
+action = "accept"
+
+[[firewall.rules]]
+name = "dashboard"
+from = "LAN"
+to = "FW"
+proto = "tcp"
+ports = 80
+action = "accept"
+
+[[firewall.rules]]
+name = "api"
+from = "LAN"
+to = "FW"
+proto = "tcp"
+ports = 8080
+action = "accept"
+
+[[firewall.rules]]
+name = "lan-to-wan"
+from = "LAN"
+to = "WAN"
+proto = "any"
+action = "accept"
+
+# --- Services ----------------------------------------------------------------
+[services.api]
+enable = true
+listenZones = ["LAN"]
+port = 8080
+
+[services.dashboard]
+enable = true
+listenZones = ["LAN"]
+port = 80
+
+[services.ssh]
+enable = true
+listenZones = ["LAN"]
+passwordAuth = false
+permitRootLogin = "prohibit-password"
+
+[services.dns]
+enable = true
+port = 53
+listenZones = ["LAN"]
+cacheSize = 2000
+
+[services.dns.dict]
+"machine.lan" = "10.10.10.2"
+"website.lan" = "10.100.100.100"
+
+[locale]
+timeZone = "Europe/Paris"
+consoleKeyMap = "en"
+consoleFont = "Lat2-Terminus16"

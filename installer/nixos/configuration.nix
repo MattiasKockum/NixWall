@@ -11,7 +11,7 @@ _:
       api.enable = true;
       seedEtc.enable = false;
     };
-    configFile = ./config.json;
+    configFile = ./config.toml;
   };
 
   nix.settings.experimental-features = [

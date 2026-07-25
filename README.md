@@ -23,15 +23,15 @@ today's firewalls have which:
 That's where NixOS comes in, with it's native declarative system and rollbacks,
 it is the perfect base for a firewall to be built upon.
 However, NixOS can be hard to learn. That is why NixWall comes with a simple
-json as an abstraction layer, to store all the configuration specific to a
+TOML as an abstraction layer, to store all the configuration specific to a
 firewall that the user needs.
 That way:
 
 - The end user never has to write Nix code.
 - The Nix developer only writes Nix modules and don't touch the specific
-  json configuration.
-- The API can easily talk with the json configuration.
-- The json configuration is easier to debug.
+  TOML configuration.
+- The API can easily talk with the TOML configuration.
+- The TOML configuration is easier to debug.
 
 ## How to start
 

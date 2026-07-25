@@ -1,13 +1,14 @@
 { lib, config, ... }:
 let
-  parsed = config.nixwall.parsedConfig;
+  parsed = config.nixwall.internal;
   sshCfg = (parsed.services or { }).ssh or { };
   enabled = sshCfg.enable or false;
   passwordAuth = sshCfg.passwordAuth or false;
   permitRoot = sshCfg.permitRootLogin or "no";
   listenZones = sshCfg.listenZones or [ ];
-  rootKeys = (sshCfg.root or { }).authorizedKeys or [ ];
-  sshUsers = sshCfg.users or { };
+
+  users = parsed.users or { };
+  sshUsers = lib.filterAttrs (_: u: (u.ssh or { }) ? authorizedKeys) users;
 
   zoneToIface = parsed.interfaces or { };
   addresses = (parsed.network or { }).addresses or { };
@@ -25,10 +26,6 @@ let
       port = 22;
     }) listenZones
   );
-
-  userKeyDecls = lib.mapAttrs (_: u: {
-    openssh.authorizedKeys.keys = u.sshAuthorizedKeys or [ ];
-  }) sshUsers;
 in
 {
   config = lib.mkIf (config.nixwall.enable && enabled) {
@@ -38,12 +35,8 @@ in
         message = "nixwall: every services.ssh.listenZones entry must exist in interfaces mapping.";
       }
       {
-        assertion = builtins.isList rootKeys && lib.all lib.isString rootKeys;
-        message = "nixwall: services.ssh.root.authorizedKeys must be a list of strings.";
-      }
-      {
         assertion = lib.all (name: lib.hasAttr name config.users.users) (lib.attrNames sshUsers);
-        message = "nixwall: every services.ssh.users.<name> must be declared in nixwall users config.";
+        message = "nixwall: every user with a [users.<name>.ssh] block must be declared in nixwall users config.";
       }
       {
         assertion = lib.elem permitRoot [
@@ -67,11 +60,5 @@ in
       };
       listenAddresses = listenAddrs;
     };
-
-    users.users =
-      userKeyDecls
-      // lib.optionalAttrs (rootKeys != [ ]) {
-        root.openssh.authorizedKeys.keys = rootKeys;
-      };
   };
 }

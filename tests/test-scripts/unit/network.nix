@@ -1,4 +1,7 @@
 { pkgs, ... }:
+let
+  cfgs = import ../../configs { inherit pkgs; };
+in
 pkgs.testers.runNixOSTest {
   name = "unit/network";
 
@@ -9,22 +12,7 @@ pkgs.testers.runNixOSTest {
     ];
     nixwall = {
       enable = true;
-      config = {
-        version = 1;
-        interfaces = {
-          LAN = "eth0";
-          WAN = "eth1";
-        };
-        network = {
-          hostname = "nixwall";
-          addresses = {
-            LAN = "10.10.10.1/24";
-            WAN = "10.100.100.1/24";
-          };
-          gateway = "10.100.100.254";
-          dns = [ "10.100.100.10" ];
-        };
-      };
+      config = cfgs.base;
     };
   };
 

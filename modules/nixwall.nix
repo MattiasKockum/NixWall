@@ -2,6 +2,7 @@
   imports = [
     ./core/nixwall-options.nix
     ./core/network.nix
+    ./core/interfaces.nix
     ./core/dhcp.nix
     ./core/firewall-rules.nix
     ./core/ssh.nix
