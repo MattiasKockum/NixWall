@@ -27,3 +27,5 @@ headers = "0.4"
 tower = { version = "0.5", features = ["util"] }
 toml_edit = "0.22"
 toml = "0.8"
+hmac = "0.12"
+sha2 = "0.10"

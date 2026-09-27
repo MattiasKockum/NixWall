@@ -170,6 +170,7 @@
               rustfmt
               pkg-config
               pam
+              rustPlatform.bindgenHook
             ];
           };
         }

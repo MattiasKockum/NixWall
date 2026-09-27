@@ -76,12 +76,7 @@ in
         Environment = [
           "NW_API_HOST=${listenAddr}"
           "NW_API_PORT=${toString cfg.port}"
-          "NW_CONFIG_PATH=${
-            if config.nixwall.configFile != null then
-              toString config.nixwall.configFile
-            else
-              "/etc/nixos/config.toml"
-          }"
+          "NW_CONFIG_PATH=/etc/nixos/config.toml"
           "NW_REPO_DIR=/etc/nixos"
           "NW_FLAKE=/etc/nixos"
           "NW_API_TLS_CERT=${config.nixwall.appliance.tls.certFile}"
