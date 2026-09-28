@@ -17,5 +17,6 @@
     ./appliance/locale.nix
     ./appliance/pam.nix
     ./appliance/seed-config.nix
+    ./appliance/offline.nix
   ];
 }
