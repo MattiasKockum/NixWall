@@ -11,7 +11,7 @@ CLIENT_TMPDIR="$(mktemp -d)"
 cleanup() {
   echo "> Tearing down demo..."
   virsh destroy nixwall-fw 2>/dev/null || true
-  virsh undefine nixwall-fw --remove-all-storage 2>/dev/null || true
+  virsh undefine nixwall-fw --nvram --remove-all-storage 2>/dev/null || true
   virsh destroy demo-client 2>/dev/null || true
   virsh undefine demo-client --remove-all-storage 2>/dev/null || true
   virsh net-destroy demo-lan 2>/dev/null || true
@@ -47,7 +47,7 @@ virt-install \
   --vcpus 2 \
   --disk "size=20,format=qcow2,bus=virtio" \
   --cdrom "$ISO_DEST" \
-  --boot "cdrom,hd" \
+  --boot "uefi,cdrom,hd" \
   --network "network=default,model=virtio" \
   --network "network=demo-lan,model=virtio" \
   --os-variant "generic" \
