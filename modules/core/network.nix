@@ -6,6 +6,7 @@ let
   dns = net.dns or [ ];
   gateway = net.gateway or null;
   hostname = net.hostname or "nixwall";
+  dhcpZones = net.dhcpZones or [ ];
 
   zoneToIface = parsed.interfaces or { };
   wanIface = zoneToIface.WAN or null;
@@ -66,6 +67,18 @@ let
       linkConfig.RequiredForOnline = false;
     }
   ) ifaceAddrs;
+
+  dhcpNetworkd = lib.listToAttrs (
+    map (zone: {
+      name = "40-${zoneToIface.${zone}}";
+      value = {
+        DHCP = "yes";
+        matchConfig.Name = zoneToIface.${zone};
+        networkConfig.ConfigureWithoutCarrier = true;
+        linkConfig.RequiredForOnline = false;
+      };
+    }) dhcpZones
+  );
 in
 {
   config = lib.mkIf config.nixwall.enable {
@@ -120,6 +133,6 @@ in
       };
     };
 
-    systemd.network.networks = staticNetworkd;
+    systemd.network.networks = staticNetworkd // dhcpNetworkd;
   };
 }
