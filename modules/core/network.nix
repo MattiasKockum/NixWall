@@ -58,6 +58,14 @@ let
     ipv4.addresses = lib.mkForce (v.ipv4.addresses or [ ]);
     ipv6.addresses = lib.mkForce (v.ipv6.addresses or [ ]);
   }) ifaceAddrs;
+
+  staticNetworkd = lib.mapAttrs' (
+    ifc: _:
+    lib.nameValuePair "40-${ifc}" {
+      networkConfig.ConfigureWithoutCarrier = true;
+      linkConfig.RequiredForOnline = false;
+    }
+  ) ifaceAddrs;
 in
 {
   config = lib.mkIf config.nixwall.enable {
@@ -111,5 +119,7 @@ in
         interface = wanIface;
       };
     };
+
+    systemd.network.networks = staticNetworkd;
   };
 }
