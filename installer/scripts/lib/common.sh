@@ -1,22 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-_script_dir() {
-	local SOURCE="${BASH_SOURCE[0]}"
-	while [ -h "$SOURCE" ]; do
-		local DIR
-		DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-		SOURCE="$(readlink "$SOURCE")"
-		[[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
-	done
-	cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1
-	pwd
-}
-
 require_root() {
 	if [ "${EUID:-$(id -u)}" -ne 0 ]; then
 		echo "Elevating with sudo..."
-		exec sudo --preserve-env=FLAKE_DIR,DISKO_FILE,HOST,YES "$0" "$@"
+		exec sudo --preserve-env=HOST,YES,ONLINE "$0" "$@"
 	fi
 }
 
@@ -24,9 +12,8 @@ header() { printf "\n==> %s\n" "$*"; }
 
 set_defaults() {
 	: "${HOST:=nixwall}"
-	: "${FLAKE_DIR:=}"
-	: "${DISKO_FILE:=}"
 	: "${YES:=0}"
+	: "${ONLINE:=0}"
 }
 
 usage() {
@@ -34,12 +21,11 @@ usage() {
 nixwall-install, the installer for NixWall
 
 USAGE:
-  nixwall-install [--flake PATH] [--disko PATH] [--host NAME] [-y]
+  nixwall-install [--host NAME] [--online] [-y]
 
 OPTIONS:
-  --flake PATH   Path to flake directory (default: auto: /nixwall or /iso/nixwall)
-  --disko PATH   Path to disko file (default: \$FLAKE_DIR/installer/disko.nix)
-  --host NAME    Flake host (default: nixwall), used as: --flake <dir>#<host>
+  --host NAME    Flake host (default: nixwall)
+  --online       Allow network access (binary caches, downloads); default is offline
   -y             Non-interactive (assume yes)
   -h, --help     Show this help
 EOF
@@ -48,17 +34,13 @@ EOF
 parse_args() {
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		--flake)
-			FLAKE_DIR="$2"
-			shift 2
-			;;
-		--disko)
-			DISKO_FILE="$2"
-			shift 2
-			;;
 		--host)
 			HOST="$2"
 			shift 2
+			;;
+		--online)
+			ONLINE=1
+			shift
 			;;
 		-y)
 			YES=1

@@ -14,6 +14,13 @@ fi
 main() {
 	set_defaults
 	parse_args "$@"
+
+	if [ "$ONLINE" -eq 0 ]; then
+		export NIX_CONFIG=$'substituters =
+connect-timeout = 1
+download-attempts = 1'
+	fi
+
 	require_root "$@"
 
 	header "Planning…"
