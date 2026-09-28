@@ -1,30 +1,30 @@
 {
   disko.devices = {
     disk.disk1 = {
-      device = "/dev/vda"; # CHANGE ME
+      device = "/dev/nvme0n1"; # CHANGE ME
       type = "disk";
       content = {
         type = "gpt";
         partitions = {
-          bios = {
-            name = "bios";
-            size = "1M";
-            type = "EF02"; # BIOS boot partition for GRUB on GPT
-          };
-          boot = {
-            name = "boot";
-            size = "500M";
-            type = "8300";
+
+          esp = {
+            name = "ESP";
+            size = "1G";
+            type = "EF00";
             content = {
               type = "filesystem";
-              format = "ext4";
+              format = "vfat";
               mountpoint = "/boot";
+              mountOptions = [
+                "umask=0077"
+                "defaults"
+              ];
             };
           };
+
           root = {
             name = "root";
             size = "100%";
-            type = "8300";
             content = {
               type = "filesystem";
               format = "ext4";
@@ -32,6 +32,7 @@
               mountOptions = [ "noatime" ];
             };
           };
+
         };
       };
     };
