@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     pre-commit-hooks = {
       url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -16,6 +20,7 @@
       nixpkgs,
       pre-commit-hooks,
       crane,
+      disko,
       ...
     }:
     let
@@ -24,6 +29,15 @@
         "aarch64-linux"
       ];
       forDevSystems = f: nixpkgs.lib.genAttrs devSystems f;
+
+      flakeSources = [
+        nixpkgs
+        disko
+        self
+        crane
+        pre-commit-hooks
+        pre-commit-hooks.inputs.flake-compat
+      ];
 
       craneLib = system: crane.mkLib nixpkgs.legacyPackages.${system};
 
@@ -89,6 +103,17 @@
           system = "x86_64-linux";
           modules = [ ./installer/iso.nix ];
           specialArgs = { inherit self; };
+        };
+
+        appliance-default = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            disko.nixosModules.disko
+            self.nixosModules.nixwall
+            ./installer/nixos/disko.nix
+            ./installer/nixos/configuration.nix
+            { system.extraDependencies = flakeSources; }
+          ];
         };
 
         demo-client = nixpkgs.lib.nixosSystem {
