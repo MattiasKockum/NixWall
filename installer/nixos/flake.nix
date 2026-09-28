@@ -6,6 +6,7 @@
     nixwall = {
       url = "github:MattiasKockum/NixWall";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.disko.follows = "disko";
     };
     disko = {
       url = "github:nix-community/disko";
@@ -31,6 +32,16 @@
           nixwall.nixosModules.nixwall
           ./disko.nix
           ./configuration.nix
+          {
+            system.extraDependencies = [
+              nixpkgs
+              disko
+              nixwall
+              nixwall.inputs.crane
+              nixwall.inputs.pre-commit-hooks
+              nixwall.inputs.pre-commit-hooks.inputs.flake-compat
+            ];
+          }
         ];
       };
     };

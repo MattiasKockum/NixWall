@@ -135,6 +135,11 @@
             if system == "x86_64-linux" then
               {
                 installer-iso = self.nixosConfigurations.installerIso.config.system.build.isoImage;
+                installer-flake = import ./installer/installer-flake.nix {
+                  pkgs = nixpkgs.legacyPackages.x86_64-linux;
+                  inherit (nixpkgs) lib;
+                  inherit self;
+                };
                 demo-client-vm = self.nixosConfigurations.demo-client.config.system.build.vm;
               }
             else

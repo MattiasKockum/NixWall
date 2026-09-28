@@ -19,5 +19,7 @@ _:
     "flakes"
   ];
 
+  nix.settings.flake-registry = "";
+
   system.stateVersion = "25.05";
 }
