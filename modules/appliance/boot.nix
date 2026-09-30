@@ -20,7 +20,7 @@
           enable = true;
           efiSupport = true;
           efiInstallAsRemovable = true;
-          devices = [ "nodev" ];
+          device = "nodev";
           configurationLimit = lib.mkDefault 10;
         };
         efi.canTouchEfiVariables = false;
