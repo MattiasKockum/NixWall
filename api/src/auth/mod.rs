@@ -7,4 +7,3 @@ pub mod ticket;
 pub mod token;
 
 pub use middleware::auth_middleware;
-pub use principal::Principal;

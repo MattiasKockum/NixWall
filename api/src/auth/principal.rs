@@ -1,8 +1,16 @@
 #[derive(Clone)]
 pub enum Principal {
     Basic(String),
-    Ticket { user: String, expiry: u64 },
-    ApiToken { user: String, token_id: String },
+    Ticket {
+        user: String,
+        #[expect(dead_code)]
+        expiry: u64,
+    },
+    ApiToken {
+        user: String,
+        #[expect(dead_code)]
+        token_id: String,
+    },
 }
 
 impl Principal {

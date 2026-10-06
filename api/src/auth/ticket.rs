@@ -37,12 +37,11 @@ pub fn expected_csrf(secret: &[u8], user: &str, expiry: u64) -> String {
 }
 
 pub fn load_or_create_ticket_secret(path: &str) -> Vec<u8> {
-    if let Ok(s) = std::fs::read_to_string(path) {
-        if let Some(bytes) = hex_decode(s.trim()) {
-            if bytes.len() == 32 {
-                return bytes;
-            }
-        }
+    if let Ok(s) = std::fs::read_to_string(path)
+        && let Some(bytes) = hex_decode(s.trim())
+        && bytes.len() == 32
+    {
+        return bytes;
     }
     let secret: Vec<u8> = Uuid::new_v4()
         .as_bytes()
