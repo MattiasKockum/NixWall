@@ -1,7 +1,6 @@
-{ pkgs, ... }: {
-  environment.systemPackages = with pkgs; [
-
-    vim
-
-  ];
+_: {
+  programs.vim = {
+    enable = true;
+    defaultEditor = true;
+  };
 }
