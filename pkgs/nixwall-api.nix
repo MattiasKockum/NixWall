@@ -16,7 +16,7 @@ rustPlatform.buildRustPackage {
   buildInputs = [ pam ];
   meta = {
     description = "REST API for NixWall";
-    license = lib.licenses.mit;
+    license = lib.licenses.agpl3Only;
     maintainers = [ ];
     platforms = lib.platforms.linux;
   };

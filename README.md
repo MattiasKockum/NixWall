@@ -53,7 +53,7 @@ highly regarded.
 
 ## License
 
-NixWall is licensed under the GNU General Public License v3.0 (GPLv3).
+NixWall is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0-only).
 
 Copyright © 2025 Mattias Kockum and the NixWall contributors.
 
