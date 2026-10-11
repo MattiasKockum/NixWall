@@ -20,6 +20,11 @@
           pkgs.lndir
           pkgs.libredirect
           pkgs.lklWithFirewall.lib
+          pkgs.texinfo
+          pkgs.desktop-file-utils
+          pkgs.getconf
+          pkgs.libxslt.bin
+          pkgs.findXMLCatalogs
           config.system.build.etc.inputDerivation
           (pkgs.perl.withPackages (
             p: with p; [
