@@ -8,13 +8,7 @@ let
   normalUsers = lib.filterAttrs (name: _: name != "root") usersCfg;
 
   passwordAttrs =
-    u:
-    if u ? passwordHash then
-      { hashedPassword = u.passwordHash; }
-    else if u ? initialPassword then
-      { inherit (u) initialPassword; }
-    else
-      { hashedPassword = "!"; };
+    u: if u ? passwordHash then { hashedPassword = u.passwordHash; } else { hashedPassword = "!"; };
 
   commonAttrs =
     u:
@@ -64,16 +58,6 @@ in
   config = lib.mkIf (config.nixwall.enable && usersCfg != { }) {
     assertions = [
       {
-        assertion = !((rootCfg ? initialPassword) && (rootCfg ? passwordHash));
-        message = "nixwall: [users.root] cannot set both initialPassword and passwordHash.";
-      }
-      {
-        assertion = lib.all (u: !((u ? initialPassword) && (u ? passwordHash))) (
-          lib.attrValues normalUsers
-        );
-        message = "nixwall: a user cannot set both initialPassword and passwordHash.";
-      }
-      {
         assertion = !(rootCfg ? wheel);
         message = "nixwall: [users.root] cannot set `wheel`, root already has full privilege.";
       }
@@ -83,13 +67,15 @@ in
       }
     ];
 
-    users.groups = groupsAttrset;
-
-    users.users =
-      lib.mapAttrs normalAttrs normalUsers
-      // lib.optionalAttrs hasRoot {
-        root = rootAttrs;
-      };
+    users = {
+      groups = groupsAttrset;
+      mutableUsers = false;
+      users =
+        lib.mapAttrs normalAttrs normalUsers
+        // lib.optionalAttrs hasRoot {
+          root = rootAttrs;
+        };
+    };
 
     security.sudo = {
       enable = lib.mkDefault true;

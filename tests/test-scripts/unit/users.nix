@@ -2,6 +2,7 @@
 let
   cfgs = import ../../configs { inherit pkgs; };
 
+  aliceHash = "$y$j9T$ipS/V9UraqgNwbmxo8sXd0$K.LPzm9kcGMssQCMEYNUBdYo2pJs2xik0GPZxEF/eZ8";
   carolHash = "$6$PxUZQx/q2lPmQf.0$/my0e2zwiiYsG0K2QXcmGyOZ.PlSVhmoKGI0HlHyZmbIK.geiZG7//o1hgqGLrN9hkVdta/GegvvPfAiClxN70";
 in
 pkgs.testers.runNixOSTest {
@@ -20,7 +21,7 @@ pkgs.testers.runNixOSTest {
             alice = {
               wheel = true;
               passwordlessSudo = true;
-              initialPassword = "alice-start";
+              passwordHash = aliceHash;
               ssh.authorizedKeys = [
                 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPzZm9OdiwdnERpkPbcL2cLo8BX0OL+JMdTHTeyfLV/G alice@test"
               ];

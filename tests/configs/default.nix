@@ -30,7 +30,7 @@ let
   demoUsers.users = {
     alice = {
       wheel = true;
-      initialPassword = "changeme";
+      passwordHash = "$y$j9T$ipS/V9UraqgNwbmxo8sXd0$K.LPzm9kcGMssQCMEYNUBdYo2pJs2xik0GPZxEF/eZ8"; # password value is "changeme"
       ssh.authorizedKeys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPzZm9OdiwdnERpkPbcL2cLo8BX0OL+JMdTHTeyfLV/G alice@test"
       ];
@@ -57,7 +57,9 @@ rec {
     api = mk [
       dhcpLAN
       demoUsers
-      { users.bob.initialPassword = "changeme"; }
+      {
+        users.bob.passwordHash = "$y$j9T$ipS/V9UraqgNwbmxo8sXd0$K.LPzm9kcGMssQCMEYNUBdYo2pJs2xik0GPZxEF/eZ8";
+      }
       {
         firewall.rules = [
           {
